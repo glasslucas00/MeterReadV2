@@ -15,10 +15,10 @@
 
 Author: lucas
 Date: 2022-05-13 00:03:00
-LastEditTime: 2022-05-13 16:30:57
+LastEditTime: 2022-10-16 12:57:01
 LastEditors: lucas
 Description: 仪表识别核心
-FilePath: \meter_without_gui\MeterReadV2\MeterClass.py
+FilePath: \MeterReadV2\MeterClass.py
 CSDN:https://blog.csdn.net/qq_27545821?spm=1000.2115.3001.5343
 github: https://github.com/glasslucas00?tab=repositories
 '''
@@ -29,6 +29,7 @@ import os
 import random 
 import glob
 
+#基本方法工具
 class Functions:
     @staticmethod
     def GetClockAngle(v1, v2): 
@@ -44,6 +45,7 @@ class Functions:
             return theta
     @staticmethod
     def Disttances(a, b):
+        #返回两点间距离
         x1, y1 = a
         x2, y2 = b
         Disttances = int(sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2))
@@ -51,6 +53,7 @@ class Functions:
 
     @staticmethod
     def couputeMean(deg):
+        #对数据进行处理，提取均值
         """
         :funtion :
         :param b:
@@ -87,21 +90,22 @@ class Functions:
 
         return new_deg
 
-
+#检测方法
 class MeterDetection:
     def __init__(self,path):
         self.imageName=path.split('/')[-1].split('.')[0]
-        self.outputPath=os.getcwd()+'/outputs/'
+        # self.outputPath=(os.getcwd()+'/outputs/').replace('\\','/')
+        self.outputPath=('outputs/')
         self.image=cv2.imread(path)
         self.circleimg=None
         self.panMask=None           #霍夫圆检测切割的表盘图片
         self.poniterMask =None      #指针图片
         self.numLineMask=None       #刻度线图片
         self.centerPoint=None       #中心点[x,y]
-        self.farPoint=None         #指针端点[x,y]
+        self.farPoint=None          #指针端点[x,y]
         self.zeroPoint=None         #起始点[x,y]
         self.r=None                 #半径
-        self.divisionValue=100/360
+        self.divisionValue=100/360  #分度值
         self.makeFiledir()
         self.markZeroPoint()
 
@@ -112,6 +116,7 @@ class MeterDetection:
             os.makedirs(self.outputPath)  # 如果没有这个文件夹，那就创建一个
     
     def markZeroPoint(self):
+        #标记起始点0点的位置
         img =self.image
         def on_EVENT_LBUTTONDOWN(event, x, y, flags, param):
             if event == cv2.EVENT_LBUTTONDOWN:
@@ -131,13 +136,7 @@ class MeterDetection:
         cv2.waitKey()
            
     def ImgCutCircle(self):
-        """
-        :param pyrMeanShiftFiltering(input, 10, 100) 均值滤波
-        :param 霍夫概率圆检测
-        :param mask操作提取圆
-        :return: 半径，圆心位置
-
-        """
+        #截取表盘区域，滤除背景
         img=self.image
         dst = cv2.pyrMeanShiftFiltering(img, 10, 100)
         cimage = cv2.cvtColor(dst, cv2.COLOR_BGR2GRAY)
@@ -157,6 +156,7 @@ class MeterDetection:
         return bitwiseOr
 
     def ContoursFilter(self):
+        #对轮廓进行筛选
         """
         :funtion : 提取刻度线，指针
         :param a: 高斯滤波 GaussianBlur，自适应二值化adaptiveThreshold，闭运算
@@ -165,7 +165,7 @@ class MeterDetection:
         """
         r_1, c_x, c_y = self.cirleData
 
-        img = self.image.copy()
+        img = self.panMask.copy()
         # cv2.circle(img, (c_x, c_y), 20, (23, 28, 28), -1)
         img = cv2.GaussianBlur(img, (3, 3), 0)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -230,9 +230,11 @@ class MeterDetection:
         self.r = np.mean(localtion)
         mask = np.zeros(img.shape[0:2], np.uint8)
         self.poniterMask = cv2.drawContours(mask, needlecnt, -1, (255, 255, 255), -1)  # 生成掩膜
+
+         
         mask = np.zeros(img.shape[0:2], np.uint8)
         self.numLineMask = cv2.drawContours(mask, new_cntset, -1, (255, 255, 255), -1)  # 生成掩膜
-
+        print(self.outputPath+self.imageName + '_2_numLineMask.jpg' )
         cv2.imwrite(self.outputPath+self.imageName + '_2_numLineMask.jpg' , self.numLineMask)
         cv2.imwrite(self.outputPath+self.imageName + '_3_poniterMask.jpg' , self.poniterMask)
         # for cnt in needlecnt:
@@ -268,6 +270,7 @@ class MeterDetection:
         return lineSet
 
     def getIntersectionPoints(self):
+        #获取刻度线交点
         img = self.image
         lineSet=self.lineSet
         w, h, c = img.shape
@@ -323,6 +326,7 @@ class MeterDetection:
         return img
 
     def FitPointerLine(self):
+        #拟合指针直线段
         img =self.poniterMask
         orgin_img=self.image.copy()
         # kernel = np.ones((3, 3), np.uint8)
@@ -379,6 +383,6 @@ if __name__ =="__main__":
     #     A=MeterDetection(imgpath)
     #     A.Readvalue()
     #一张图片
-    imgpath='2.jpg'
+    imgpath='1.jpg'
     A=MeterDetection(imgpath)
     readValue=A.Readvalue()
